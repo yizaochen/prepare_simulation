@@ -1,0 +1,192 @@
+#!/bin/bash -l
+#PBS -N BDD_TGTG_21mer
+#PBS -l nodes=1:ppn=20
+#PBS -l walltime=960:00:00 
+#PBS -j oe 
+#PBS -m bea
+#PBS -M yizaochen@gmail.com
+#PBS -o $HOME/log/BDD_TGTG_21mer.log
+#PBS -r n
+
+date
+# Output some useful job information.
+echo ------------------------------------------------------
+echo -n 'Job is running on node '; cat $PBS_NODEFILE
+echo ------------------------------------------------------
+echo PBS: qsub is running on $PBS_O_HOST
+echo PBS: originating queue is $PBS_O_QUEUE
+echo PBS: executing queue is $PBS_QUEUE
+echo PBS: working directory is $PBS_O_WORKDIR
+echo PBS: execution mode is $PBS_ENVIRONMENT
+echo PBS: job identifier is $PBS_JOBID
+echo PBS: job name is $PBS_JOBNAME
+echo PBS: node file is $PBS_NODEFILE
+echo PBS: current home directory is $PBS_O_HOME
+echo PBS: SHELL = $SHELL
+echo PBS: PATH = $PBS_O_PATH
+echo ------------------------------------------------------
+
+rootdir=/home/yizaochen/simulation
+host=tgtg_21mer
+type_na=bdna+bdna
+
+# Include the full path to the name of your MPI program
+GMX=/home/yizaochen/gromacs-5.1/bin
+workdir=${rootdir}/${host}/${type_na}
+mdpdir=${workdir}/mdp
+NDX=${workdir}/${type_na}.ndx
+topfile=$workdir/topol.top
+
+# Set scratch diretory
+yzscratch=/scratch/yizaochen
+if [ -d "$yzscratch" ]; then
+    echo "$yzscratch exists!"
+else
+    echo "mkdir $yzscratch"
+    mkdir $yzscratch
+fi
+
+hostscratch=$yzscratch/$host
+if [ -d "$hostscratch" ]; then
+    echo "$hostscratch exists!"
+else
+    echo "mkdir $hostscratch"
+    mkdir $hostscratch
+fi
+
+nascratch=$yzscratch/$host/$type_na
+if [ -d "$nascratch" ]; then
+    echo "$nascratch exists!"
+else
+    echo "mkdir $nascratch"
+    mkdir $nascratch
+fi
+
+let "NPROC = PBS_NUM_NODES * PBS_NUM_PPN"
+
+cd ${nascratch} 
+echo "Changed to ${PWD}"
+
+#Energy Minimize the system
+prevname=em1
+curname=em2
+${GMX}/gmx grompp -f $mdpdir/minim.mdp -c $workdir/${prevname}.gro -o ${curname}.tpr -p $topfile
+${GMX}/gmx mdrun -deffnm $curname
+mv $nascratch/${curname}.gro $workdir/${curname}.gro 
+mv $nascratch/${curname}.edr $workdir/${curname}.edr
+mv $nascratch/${curname}.tpr $workdir/${curname}.tpr
+mv $nascratch/${curname}.log $workdir/${curname}.log
+mv $nascratch/${curname}.trr $workdir/${curname}.trr
+
+# Heat the system to 300 K during 100ps
+prevname=em2
+curname=nvt1
+${GMX}/gmx grompp -f $mdpdir/${curname}.mdp -o ${curname}.tpr -p $topfile  -c $workdir/${prevname}.gro -e $workdir/${prevname}.edr -po ${curname}.out.mdp -n ${NDX}
+${GMX}/gmx mdrun -deffnm $curname
+mv $nascratch/${curname}.gro $workdir/${curname}.gro 
+mv $nascratch/${curname}.edr $workdir/${curname}.edr
+mv $nascratch/${curname}.tpr $workdir/${curname}.tpr
+mv $nascratch/${curname}.log $workdir/${curname}.log
+mv $nascratch/${curname}.xtc $workdir/${curname}.xtc
+mv $nascratch/${curname}.out.mdp $workdir/${curname}.out.mdp
+mv $nascratch/${curname}.cpt $workdir/${curname}.cpt
+
+# Equilibrate the system in 300 K long for 1ns
+prevname=nvt1
+curname=nvt2
+${GMX}/gmx grompp -f $mdpdir/${curname}.mdp -o ${curname}.tpr -p $topfile  -c $workdir/${prevname}.gro -e $workdir/${prevname}.edr -po ${curname}.out.mdp -n ${NDX}
+${GMX}/gmx mdrun -deffnm $curname
+mv $nascratch/${curname}.gro $workdir/${curname}.gro 
+mv $nascratch/${curname}.edr $workdir/${curname}.edr
+mv $nascratch/${curname}.tpr $workdir/${curname}.tpr
+mv $nascratch/${curname}.log $workdir/${curname}.log
+mv $nascratch/${curname}.xtc $workdir/${curname}.xtc
+mv $nascratch/${curname}.out.mdp $workdir/${curname}.out.mdp
+mv $nascratch/${curname}.cpt $workdir/${curname}.cpt
+
+# Equilibrate the system at 1 atm with restrain of 1000 kJ/mol
+prevname=nvt2
+curname=npt1
+${GMX}/gmx grompp -f $mdpdir/${curname}.mdp -o ${curname}.tpr -p $topfile  -c $workdir/${prevname}.gro -e $workdir/${prevname}.edr -po ${curname}.out.mdp -n ${NDX}
+${GMX}/gmx mdrun -deffnm $curname
+mv $nascratch/${curname}.gro $workdir/${curname}.gro 
+mv $nascratch/${curname}.edr $workdir/${curname}.edr
+mv $nascratch/${curname}.tpr $workdir/${curname}.tpr
+mv $nascratch/${curname}.log $workdir/${curname}.log
+mv $nascratch/${curname}.xtc $workdir/${curname}.xtc
+mv $nascratch/${curname}.out.mdp $workdir/${curname}.out.mdp
+mv $nascratch/${curname}.cpt $workdir/${curname}.cpt
+
+# Equilibrate the system at 1 atm with restrain of 100 kJ/mol
+prevname=npt1
+curname=npt2
+${GMX}/gmx grompp -f $mdpdir/${curname}.mdp -o ${curname}.tpr -p $topfile  -c $workdir/${prevname}.gro -e $workdir/${prevname}.edr -po ${curname}.out.mdp -n ${NDX}
+${GMX}/gmx mdrun -deffnm $curname
+mv $nascratch/${curname}.gro $workdir/${curname}.gro 
+mv $nascratch/${curname}.edr $workdir/${curname}.edr
+mv $nascratch/${curname}.tpr $workdir/${curname}.tpr
+mv $nascratch/${curname}.log $workdir/${curname}.log
+mv $nascratch/${curname}.xtc $workdir/${curname}.xtc
+mv $nascratch/${curname}.out.mdp $workdir/${curname}.out.mdp
+mv $nascratch/${curname}.cpt $workdir/${curname}.cpt
+
+# Equilibrate the system at 1 atm with restrain of 1 kJ/mol
+prevname=npt2
+curname=npt3
+${GMX}/gmx grompp -f $mdpdir/${curname}.mdp -o ${curname}.tpr -p $topfile  -c $workdir/${prevname}.gro -e $workdir/${prevname}.edr -po ${curname}.out.mdp -n ${NDX}
+${GMX}/gmx mdrun -deffnm $curname
+mv $nascratch/${curname}.gro $workdir/${curname}.gro 
+mv $nascratch/${curname}.edr $workdir/${curname}.edr
+mv $nascratch/${curname}.tpr $workdir/${curname}.tpr
+mv $nascratch/${curname}.log $workdir/${curname}.log
+mv $nascratch/${curname}.xtc $workdir/${curname}.xtc
+mv $nascratch/${curname}.out.mdp $workdir/${curname}.out.mdp
+mv $nascratch/${curname}.cpt $workdir/${curname}.cpt
+
+# Equilibrate the system at 1 atm without restrain
+prevname=npt3
+curname=npt4
+${GMX}/gmx grompp -f $mdpdir/${curname}.mdp -o ${curname}.tpr -p $topfile  -c $workdir/${prevname}.gro -e $workdir/${prevname}.edr -po ${curname}.out.mdp -n ${NDX}
+${GMX}/gmx mdrun -deffnm $curname
+mv $nascratch/${curname}.gro $workdir/${curname}.gro 
+mv $nascratch/${curname}.edr $workdir/${curname}.edr
+mv $nascratch/${curname}.tpr $workdir/${curname}.tpr
+mv $nascratch/${curname}.log $workdir/${curname}.log
+mv $nascratch/${curname}.xtc $workdir/${curname}.xtc
+mv $nascratch/${curname}.out.mdp $workdir/${curname}.out.mdp
+mv $nascratch/${curname}.cpt $workdir/${curname}.cpt
+
+# Production run
+prevname=npt4
+curname=md0
+${GMX}/gmx grompp -f $mdpdir/${curname}.mdp -o ${curname}.tpr -p $topfile  -c $workdir/${prevname}.gro -e $workdir/${prevname}.edr -po ${curname}.out.mdp -n ${NDX}
+${GMX}/gmx mdrun -deffnm $curname
+mv $nascratch/${curname}.gro $workdir/${curname}.gro 
+mv $nascratch/${curname}.edr $workdir/${curname}.edr
+mv $nascratch/${curname}.cpt $workdir/${curname}.cpt
+mv $nascratch/${curname}.tpr $workdir/${curname}.tpr
+mv $nascratch/${curname}.log $workdir/${curname}.log
+mv $nascratch/${curname}.xtc $workdir/${curname}.xtc
+mv $nascratch/${curname}.out.mdp $workdir/${curname}.out.mdp
+
+mdnum=1
+while [ "${mdnum}" != "10" ]
+do
+   echo "Now Processing MD${mdnum}"
+   prevnum=$(($mdnum-1))
+
+   ${GMX}/gmx grompp -f ${mdpdir}/md${mdnum}.mdp -o md${mdnum}.tpr -p $topfile -c $workdir/md${prevnum}.gro  -po md${mdnum}.out.mdp -e $workdir/md${prevnum}.edr -n ${NDX}
+   ${GMX}/gmx mdrun -deffnm md${mdnum} -cpi md${prevnum}.cpt
+   mv $nascratch/md${mdnum}.gro $workdir/md${mdnum}.gro 
+   mv $nascratch/md${mdnum}.edr $workdir/md${mdnum}.edr
+   mv $nascratch/md${mdnum}.cpt $workdir/md${mdnum}.cpt
+   mv $nascratch/md${mdnum}.tpr $workdir/md${mdnum}.tpr
+   mv $nascratch/md${mdnum}.log $workdir/md${mdnum}.log
+   mv $nascratch/md${mdnum}.xtc $workdir/md${mdnum}.xtc
+   mv $nascratch/md${mdnum}.out.mdp $workdir/md${mdnum}.out.mdp
+   mdnum=$(($mdnum+1))
+
+done
+
+date
+exit 0
