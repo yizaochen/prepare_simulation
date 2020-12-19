@@ -1,11 +1,11 @@
 #!/bin/bash -l
-#PBS -N BDD_TGTG_21mer
+#PBS -N BDD_TAT_1_21mer
 #PBS -l nodes=1:ppn=20
 #PBS -l walltime=960:00:00 
 #PBS -j oe 
 #PBS -m bea
 #PBS -M yizaochen@gmail.com
-#PBS -o $HOME/log/BDD_TGTG_21mer.log
+#PBS -o $HOME/log/BDD_TAT_1_21mer.log
 #PBS -r n
 
 date
@@ -27,7 +27,7 @@ echo PBS: PATH = $PBS_O_PATH
 echo ------------------------------------------------------
 
 rootdir=/home/yizaochen/simulation
-host=tgtg_21mer
+host=tat_1_21mer
 type_na=bdna+bdna
 
 # Include the full path to the name of your MPI program
